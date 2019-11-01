@@ -1,0 +1,162 @@
+1、创建django项目
+     django-admin startproject project
+
+2、目录层级说明
+      mange.py    一个命令行工具，可以使我们用多种方式对Django项目进行交流
+      
+      project目录    __init__py    一个空文件，它告诉python这个目录应该被看成一个python包
+                           settings.py   项目的配置文件
+                           urls.py          项目的url声明
+                           wsgi.py        项目与WSGI兼容的web服务器入口
+
+
+3、基本操作
+     3.1 设计表结构
+               班级表结构    表名；字段
+               学生表结构
+     3.2 配置数据库  注意:django默认使用sqlite数据库
+           在settings.py中通过DATABASES选项进行数据库配置
+            python3安装的是PyMySQL，在__init.py中写入两行代码
+                                                  import pymysql
+                                                  pymysql.install_as_MySQLdb()
+
+        mysql 删除数据库 drop database sunck（数据库名）
+                  创建数据库 create database sunck（数据库名）
+4、创建多个应用 
+       在一个项目中可以创建多个应用，每个应用进行一种业务处理
+
+     进入工程目录下的project(自己创建的)目录
+     执行     python manage.py  startapp app1
+
+     app1目录说明        admin.py   站点配置
+                                   models.py  模型
+                                   views.py      视图
+ 
+5、激活应用        在settings.py文件中，将app1应用加入到INSTALLED_APPS选型中
+
+6、定义模型  概述：有一个数据表，就对应一个模型
+                     在models.py文件中 引用from django.db import models
+                                  模型类要继承models.Model类
+                      说明 : 不需要定义主键，在生成时自动天界，并且值为自动添加
+
+7、在数据库中生成数据表
+             生成迁移文件--python manage.py makemigrations 在migrations目录下生成一个迁移文件
+                                                                                                  此时数据库中还没有生成数据表
+             执行迁移      --python manage.py migrate  相当于 执行sql语句创建数据表
+                                     
+8、测试数据操作      进入到python shell 执行python manage.py shell
+                               引入包    from app1.models import Grades,Students
+                                             from django.utils import timezone
+                                             from datetime import *
+                              查询数据   类名Grades.objects.all()
+                              添加数据   本质：创建一个模型类的对象实例
+                                               grade1 = Grades()
+  		               grade1.grade_name= "grade_class 1"
+                                               grade1.grade_crate_data = datetime(year=2019,month=9,day=15)
+                                               grade1.grade_gril_num = 32
+                                               grade1.grade_boy_num = 48
+                                               grade1.save()
+                                查看某个对象     Grades.objects.all()
+                                                          Grades.objects.get(pk=1)       
+                                删除某个对象       grade1.delete() 物理删除，数据库中的表里的数据被删除
+
+                                               stu1 = Students()
+  		               stu1.student_name= "lilei"
+                                               stu1.student_gender = False
+                                               stu1.student_age = 24
+                                               stu1.student_contend = 'wo jiu shi wo!'
+		               stu1.student_grade1 = grade1
+                                               stu1.student_isDelete = False
+                                               stu1.save()
+                             关联对象   获取关联对象的集合    
+                                                   需求：获取grade_class 1班级的所有学生
+                                                          对象名.关联的类名小写_set.all()
+                                                           grade1.students_set.all()
+                                                   需求，创建一个新学生，属于grade_class 2班
+ stu3 = grade1.students_set.create(student_name='Jack',student_gender=True,student_age=28,student_contend=u'哈哈哈')
+                                                  直接添加到数据库中
+9、启动服务器        python manage.py runserver ip:port
+                                     ip可以不写，不写代表本机ip
+                                     port默认是8000
+                             这是一个纯python写的轻量级web服务器，仅仅在开发测试中使用
+
+10、Admin站点管理
+                 内容发布:负责添加、修改、删除内容
+                 公告访问
+                 配置Admin应用  在settings.py中的INSTALLED_APPS中添加'django.contrib.admin'
+                                                 默认是添加好的
+                 创建管理员用户 python manage.py  createsuperuser 
+                                        一次输入用户名、邮箱、密码
+                 汉化           修改settings.py中的 LANGUAGE_CODE = 'zh-Hans'
+                                                                   TIME_ZONE = 'Asia/Shanghai'
+                 管理数据表    修改admin.py文件  
+                                        from .models import Grades,Students
+                                        #注册
+		      admin.site.Register(Grades)
+                                      admin.site.Register(Students)
+
+                 自定也管理页面 
+                        #列表页属性
+    		list_display = []      显示字段
+    		list_filter  = []         过滤字段
+   		 search_fields = []  搜索字段
+    		list_per_page = []  分页
+                        #添加、修改页属性
+    		fields      属性的先后顺序
+    		fieldsets  给属性分组，注意，fields和fieldsets不能同时使用
+                 关联对象       需求：在创建一个班级时可以直接添加几个学生
+		class StudentsAdd(admin.TabularInline):#StackedInline
+    			model = Students
+   			 extra = 2#两个学生
+		class GradesAdmin(admin.ModelAdmin):
+    			inlines = [StudentsAdd]
+                 布尔值     改成男女
+		class StudentsAdmin(admin.ModelAdmin):
+   			 def gender(self):
+        				if self.student_gender:
+           					 return "男"
+       				 else:
+           					 return "女"
+   			 #设置页面列的名称
+    			gender.short_description = "性别"
+                执行动作位置问题
+    		actions_on_bottom = True
+    		actions_on_top    = True
+                使用装饰器完成注册
+                              @admin.register(Students)
+11、视图的基本使用      在django中，视图对web请求进行回应
+                                            视图就是一个python函数，在views.py文件中定义
+ 	定义视图
+		from django.http import HttpResponse
+		def index(request):
+    			return HttpResponse("hello world!")
+ 	配置url    修改project目录下的urls.py文件
+		from django.contrib import admin
+		from django.urls import path,include
+		urlpatterns = [
+    			path('admin/', admin.site.urls),
+    			path('', include('app1.urls')),
+		]
+                               在app1目录下创建一个urls.py文件
+ 		from django.urls import path,include
+		from . import views
+		urlpatterns = [
+    			path('', views.index,name='index'),
+		]
+
+12、模板的基本使用   模板是HTML页面，可以根据视图中传递过来的数据进行填充
+ 	创建模板   创建templates目录，在目录下创建对应项目的模板目录project/templates/app1
+    	配置模板路径	  修改settings.py文件
+			TEMPLATES = [
+  			  {
+        			'BACKEND': 'django.template.backends.django.DjangoTemplates',
+       			 'DIRS': [os.path.join(BASE_DIR, 'templates')],
+
+	定义grades.html和students.html   模板语法  {{输出值，可以是变量，一个可以是对象属性}}
+					    {%执行代码段%}
+	http://127.0.0.1:8000/grades/  
+                      	1、写grades.html模板
+                                2、定义视图
+                                3、 配置URL
+
+
